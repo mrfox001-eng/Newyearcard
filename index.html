@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Happy New Year 2026</title>
+    <meta name="theme-color" content="#0f0c29">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;600;800&display=swap" rel="stylesheet">
+    <meta property="og:title" content="🎆 Interactive New Year 2026 Card">
+<meta property="og:description" content="Touch, swipe & celebrate the New Year 🎉">
+<meta property="og:image" content="preview.jpg">
+    <style>
+        /* ------------------------------------------------------------
+           CORE STYLES & RESET
+        ------------------------------------------------------------ */
+        :root {
+            --primary: #ff00cc;
+            --secondary: #333399;
+            --accent: #00ffff;
+            --text: #ffffff;
+            --glass: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --bg-night: linear-gradient(to bottom, #0f0c29, #302b63, #24243e);
+            --bg-dusk: linear-gradient(to bottom, #200122, #6f0000);
+            --bg-sunrise: linear-gradient(to bottom, #ff512f, #dd2476);
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Outfit', sans-serif;
+            color: var(--text);
+            background: #0f0c29; /* Fallback */
+            touch-action: none; /* Prevent scroll on mobile */
+        }
+
+        /* ------------------------------------------------------------
+           CANVAS BACKGROUND
+        ------------------------------------------------------------ */
+        #canvas-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            transition: filter 0.5s ease;
+        }
+
+        /* ------------------------------------------------------------
+           UI CONTAINER
+        ------------------------------------------------------------ */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none; /* Let clicks pass to canvas where needed */
+        }
+
+        .scene {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+            transform: scale(0.9);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .scene.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
+        }
+
+        /* ------------------------------------------------------------
+           TYPOGRAPHY & COMPONENTS
+        ------------------------------------------------------------ */
+        h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1rem;
+            background: linear-gradient(to right, #fff, #a2a2a2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+
+        p {
+            font-size: 1.2rem;
+            font-weight: 300;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+
+        .instruction-pill {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            padding: 10px 25px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        /* ------------------------------------------------------------
+           SCENE SPECIFICS
+        ------------------------------------------------------------ */
+        
+        /* Scene 2: Choices */
+        .card-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .choice-card {
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            width: 100px;
+            height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.3s;
+        }
+
+        .choice-card span {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            pointer-events: none;
+        }
+
+        .choice-card small {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .choice-card:active {
+            transform: scale(0.95);
+            background: rgba(255,255,255,0.25);
+        }
+
+        /* Scene 3: Swipe */
+        .swipe-indicator {
+            width: 200px;
+            height: 60px;
+            border-radius: 30px;
+            background: rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .swipe-arrow {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.5rem;
+            animation: slideArrow 2s infinite;
+        }
+
+        /* Scene 4: Long Press */
+        .press-target {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 2px dashed rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .press-inner {
+            width: 80px;
+            height: 80px;
+            background: #fff;
+            border-radius: 50%;
+            transform: scale(0.5);
+            opacity: 0.5;
+            transition: transform 0.1s;
+        }
+
+        /* Scene 5: Finale */
+        .btn {
+            margin-top: 20px;
+            padding: 15px 30px;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 50px;
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            cursor: pointer;
+        }
+        .btn:active { transform: scale(0.95); }
+
+        /* ------------------------------------------------------------
+           CONTROLS (MUTE)
+        ------------------------------------------------------------ */
+        #mute-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 20;
+            background: rgba(0,0,0,0.5);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+        }
+
+        /* ------------------------------------------------------------
+           ANIMATIONS
+        ------------------------------------------------------------ */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes slideArrow {
+            0% { transform: translate(0, -50%); opacity: 0; }
+            20% { opacity: 1; }
+            80% { transform: translate(140px, -50%); opacity: 1; }
+            100% { transform: translate(140px, -50%); opacity: 0; }
+        }
+
+        /* Overlay Gradient Layer for CSS transitions */
+        #bg-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-night);
+            z-index: 0;
+            transition: background 1.5s ease;
+        }
+        
+        .hidden { display: none; }
+
+    </style>
+</head>
+<body>
+
+    <div id="bg-overlay"></div>
+    <canvas id="canvas-layer"></canvas>
+    
+    <button id="mute-btn" aria-label="Toggle Sound">🔇</button>
+
+    <div id="ui-layer">
+        
+        <section id="scene-1" class="scene active">
+            <h1>Goodbye 2025</h1>
+            <p>Ready to step into the future?</p>
+            <div class="instruction-pill">Tap anywhere to begin ✨</div>
+        </section>
+
+        <section id="scene-2" class="scene">
+            <h2>What do you seek in 2026?</h2>
+            <p>Choose your path</p>
+            <div class="card-container">
+                <div class="choice-card" data-choice="growth">
+                    <span>🌱</span>
+                    <small>Growth</small>
+                </div>
+                <div class="choice-card" data-choice="success">
+                    <span>🚀</span>
+                    <small>Success</small>
+                </div>
+                <div class="choice-card" data-choice="happiness">
+                    <span>❤️</span>
+                    <small>Love</small>
+                </div>
+            </div>
+        </section>
+
+        <section id="scene-3" class="scene">
+            <h2>Leave the past behind</h2>
+            <div class="swipe-indicator">
+                <div class="swipe-arrow">➜</div>
+            </div>
+            <p style="margin-top: 20px; font-size: 0.9rem;">Swipe Right to Proceed</p>
+        </section>
+
+        <section id="scene-4" class="scene">
+            <h2>Make a Wish</h2>
+            <p>Press & Hold to seal it</p>
+            <div class="press-target" id="press-trigger">
+                <div class="press-inner"></div>
+            </div>
+        </section>
+
+        <section id="scene-5" class="scene">
+            <h1 style="font-size: 3.5rem;">Happy New Year<br><span style="color: var(--accent); -webkit-text-fill-color: var(--accent);">2026!</span></h1>
+            <p id="final-message">May your year be filled with light.</p>
+            <button class="btn" onclick="location.reload()">Replay Experience ↺</button>
+        </section>
+
+    </div>
+
+<script>
+/**
+ * 2026 NEW YEAR CARD
+ * Architecture:
+ * 1. AudioController: Synthesizes sounds via Web Audio API.
+ * 2. Visuals: Canvas engine for particles and fireworks.
+ * 3. StateManager: Handles DOM transitions and Logic.
+ */
+
+/* --- 1. AUDIO CONTROLLER (Web Audio API - No assets required) --- */
+const AudioController = {
+    ctx: null,
+    muted: true,
+    initialized: false,
+
+    init() {
+        if (this.initialized) return;
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioContext();
+        this.initialized = true;
+        this.muted = false;
+        document.getElementById('mute-btn').textContent = "🔊";
+        this.startBackgroundDrone();
+    },
+
+    toggleMute() {
+        this.muted = !this.muted;
+        document.getElementById('mute-btn').textContent = this.muted ? "🔇" : "🔊";
+        if (!this.muted && this.ctx.state === 'suspended') this.ctx.resume();
+        if (this.muted) this.ctx.suspend();
+    },
+
+    playTone(freq, type, duration, vol = 0.1) {
+        if (this.muted || !this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration);
+    },
+
+    playTap() {
+        this.playTone(600, 'sine', 0.1, 0.05); // Subtle tap
+    },
+
+    playSparkle() {
+        // Generates a quick arpeggio
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [880, 1100, 1320].forEach((f, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.frequency.value = f;
+            gain.gain.setValueAtTime(0.02, now + i * 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.05 + 0.2);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + i * 0.05);
+            osc.stop(now + i * 0.05 + 0.2);
+        });
+    },
+
+    startChargingSound() {
+        if (this.muted || !this.ctx) return;
+        this.chargeOsc = this.ctx.createOscillator();
+        this.chargeGain = this.ctx.createGain();
+        this.chargeOsc.type = 'triangle';
+        this.chargeOsc.frequency.setValueAtTime(100, this.ctx.currentTime);
+        this.chargeOsc.frequency.linearRampToValueAtTime(800, this.ctx.currentTime + 2); // Rise
+        this.chargeGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
+        this.chargeGain.gain.linearRampToValueAtTime(0.1, this.ctx.currentTime + 2);
+        
+        this.chargeOsc.connect(this.chargeGain);
+        this.chargeGain.connect(this.ctx.destination);
+        this.chargeOsc.start();
+    },
+
+    stopChargingSound(success = false) {
+        if (this.chargeOsc) {
+            this.chargeOsc.stop();
+            this.chargeOsc = null;
+        }
+        if (success) this.playTone(880, 'sine', 1.0, 0.2); // Success chime
+    },
+
+    playExplosion() {
+        if (this.muted || !this.ctx) return;
+        // White noise burst simulation
+        const bufferSize = this.ctx.sampleRate * 2; 
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 1.5);
+        noise.connect(gain);
+        gain.connect(this.ctx.destination);
+        noise.start();
+    },
+
+    startBackgroundDrone() {
+        // Low atmospheric drone
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.frequency.value = 50; 
+        gain.gain.value = 0.02;
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+    }
+};
+
+/* --- 2. VISUAL ENGINE (Canvas) --- */
+const Visuals = {
+    canvas: document.getElementById('canvas-layer'),
+    ctx: null,
+    width: 0,
+    height: 0,
+    particles: [],
+    fireworks: [],
+    colors: ['#ff00cc', '#333399', '#00ffff', '#ffffff', '#ffd700'],
+    mode: 'ambient', // ambient, charging, celebration
+    touchX: 0,
+    touchY: 0,
+
+    init() {
+        this.ctx = this.canvas.getContext('2d');
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        this.loop();
+        
+        // Spawn initial ambient particles
+        for(let i=0; i<50; i++) this.particles.push(new Particle(this.width, this.height, 'ambient'));
+    },
+
+    resize() {
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+    },
+
+    addRipple(x, y) {
+        for(let i=0; i<8; i++) {
+            this.particles.push(new Particle(this.width, this.height, 'ripple', x, y));
+        }
+    },
+
+    startCharging(x, y) {
+        this.mode = 'charging';
+        this.touchX = x;
+        this.touchY = y;
+    },
+
+    stopCharging() {
+        this.mode = 'ambient';
+    },
+
+    launchFirework() {
+        const x = Math.random() * this.width;
+        const targetY = this.height * 0.2 + Math.random() * (this.height * 0.3);
+        this.fireworks.push(new Firework(x, this.height, targetY, this.colors));
+    },
+
+    loop() {
+        requestAnimationFrame(() => this.loop());
+        
+        // Clear with trails
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; 
+        this.ctx.globalCompositeOperation = 'source-over';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+        this.ctx.globalCompositeOperation = 'screen';
+
+        // Update logic based on mode
+        if (this.mode === 'charging' && Math.random() > 0.1) {
+            this.particles.push(new Particle(this.width, this.height, 'energy', this.touchX, this.touchY));
+        }
+        
+        if (this.mode === 'celebration' && Math.random() > 0.95) {
+            this.launchFirework();
+            if(Math.random() > 0.5) AudioController.playExplosion();
+        }
+
+        // Handle Particles
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.update();
+            p.draw(this.ctx);
+            if (p.life <= 0) this.particles.splice(i, 1);
+        }
+
+        // Handle Fireworks
+        for (let i = this.fireworks.length - 1; i >= 0; i--) {
+            const f = this.fireworks[i];
+            f.update();
+            f.draw(this.ctx);
+            if (f.exploded) {
+                // Create explosion particles
+                for(let j=0; j<50; j++) {
+                    this.particles.push(new Particle(this.width, this.height, 'explosion', f.x, f.y, f.color));
+                }
+                this.fireworks.splice(i, 1);
+            }
+        }
+        
+        // Maintain ambient count
+        if (this.particles.filter(p => p.type === 'ambient').length < 40) {
+            this.particles.push(new Particle(this.width, this.height, 'ambient'));
+        }
+    }
+};
+
+/* --- PARTICLE CLASS --- */
+class Particle {
+    constructor(w, h, type, x, y, color) {
+        this.type = type;
+        this.life = 1.0;
+        
+        if (type === 'ambient') {
+            this.x = Math.random() * w;
+            this.y = Math.random() * h;
+            this.vx = (Math.random() - 0.5) * 0.5;
+            this.vy = (Math.random() - 0.5) * 0.5;
+            this.size = Math.random() * 3;
+            this.color = 'rgba(255, 255, 255, 0.5)';
+            this.decay = 0;
+        } else if (type === 'ripple') {
+            this.x = x;
+            this.y = y;
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 2 + 1;
+            this.vx = Math.cos(angle) * speed;
+            this.vy = Math.sin(angle) * speed;
+            this.size = Math.random() * 5 + 2;
+            this.color = `rgba(0, 255, 255, 1)`;
+            this.decay = 0.02;
+        } else if (type === 'energy') {
+            // Spawn at edges, move to target
+            const edge = Math.floor(Math.random() * 4); // 0:top, 1:right, 2:bottom, 3:left
+            if(edge === 0) { this.x = Math.random() * w; this.y = -10; }
+            else if(edge === 1) { this.x = w + 10; this.y = Math.random() * h; }
+            else if(edge === 2) { this.x = Math.random() * w; this.y = h + 10; }
+            else { this.x = -10; this.y = Math.random() * h; }
+            
+            this.targetX = x;
+            this.targetY = y;
+            this.size = Math.random() * 4;
+            this.color = '#ff00cc';
+            this.speed = Math.random() * 5 + 5;
+            this.decay = 0.01; // Life acts as timeout
+        } else if (type === 'explosion') {
+            this.x = x;
+            this.y = y;
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 5 + 2;
+            this.vx = Math.cos(angle) * speed;
+            this.vy = Math.sin(angle) * speed;
+            this.grav = 0.1;
+            this.size = Math.random() * 3 + 1;
+            this.color = color;
+            this.decay = 0.015;
+        }
+    }
+
+    update() {
+        if (this.type === 'energy') {
+            const dx = this.targetX - this.x;
+            const dy = this.targetY - this.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < 10) this.life = 0;
+            this.x += (dx / dist) * this.speed;
+            this.y += (dy / dist) * this.speed;
+        } else {
+            if(this.grav) this.vy += this.grav;
+            this.x += this.vx;
+            this.y += this.vy;
+            this.life -= this.decay;
+        }
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = this.color;
+        if(this.type === 'explosion' || this.type === 'ripple') {
+            ctx.fillStyle = this.color.replace(')', `, ${this.life})`); // Handle simple hex vs rgba later, simplified here assuming rgba or simple logic
+            if(this.color.startsWith('#')) ctx.globalAlpha = this.life;
+        }
+        
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+    }
+}
+
+/* --- FIREWORK CLASS --- */
+class Firework {
+    constructor(x, y, targetY, colors) {
+        this.x = x;
+        this.y = y;
+        this.targetY = targetY;
+        this.color = colors[Math.floor(Math.random() * colors.length)];
+        this.vy = -12 - Math.random() * 4;
+        this.vx = (Math.random() - 0.5) * 2;
+        this.exploded = false;
+    }
+
+    update() {
+        this.y += this.vy;
+        this.x += this.vx;
+        this.vy += 0.2; // Gravity
+        if (this.vy >= 0 || this.y <= this.targetY) {
+            this.exploded = true;
+        }
+    }
+
+    draw(ctx) {
+        if(this.exploded) return;
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+/* --- 3. STATE MANAGER & APP LOGIC --- */
+const App = {
+    currentScene: 1,
+    userChoice: '',
+    longPressTimer: null,
+    isCharging: false,
+    
+    // Swipe vars
+    touchStartX: 0,
+    touchEndX: 0,
+
+    init() {
+        Visuals.init();
+        
+        // Mute Button
+        document.getElementById('mute-btn').addEventListener('click', (e) => {
+            e.stopPropagation(); // Don't trigger scene tap
+            AudioController.toggleMute();
+        });
+
+        // Global Tap Interactions (Ripples)
+        document.addEventListener('pointerdown', (e) => {
+            Visuals.addRipple(e.clientX, e.clientY);
+            if(!AudioController.muted && AudioController.initialized) AudioController.playTap();
+            
+            // Scene 1 Transition
+            if (this.currentScene === 1) {
+                AudioController.init();
+                this.changeScene(2);
+            }
+        });
+
+        // Setup Scene 2 (Choices)
+        document.querySelectorAll('.choice-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                e.stopPropagation(); // prevent ripple from triggering scene transition logic erroneously
+                this.userChoice = card.getAttribute('data-choice');
+                AudioController.playSparkle();
+                this.changeScene(3);
+            });
+        });
+
+        // Setup Scene 3 (Swipe)
+        const scene3 = document.getElementById('scene-3');
+        scene3.addEventListener('touchstart', (e) => this.touchStartX = e.changedTouches[0].screenX);
+        scene3.addEventListener('touchend', (e) => {
+            this.touchEndX = e.changedTouches[0].screenX;
+            if (this.touchEndX - this.touchStartX > 50) { // Right Swipe
+                this.changeScene(4);
+            }
+        });
+        // Mouse simulation for desktop swipe
+        scene3.addEventListener('mousedown', (e) => this.touchStartX = e.screenX);
+        scene3.addEventListener('mouseup', (e) => {
+            this.touchEndX = e.screenX;
+            if (this.touchEndX - this.touchStartX > 50) this.changeScene(4);
+        });
+
+        // Setup Scene 4 (Long Press)
+        const btn = document.getElementById('press-trigger');
+        const startPress = (e) => {
+            e.preventDefault();
+            if(this.currentScene !== 4) return;
+            this.isCharging = true;
+            
+            // Haptics
+            if(navigator.vibrate) navigator.vibrate(50);
+            
+            // Audio & Visuals
+            AudioController.startChargingSound();
+            const rect = btn.getBoundingClientRect();
+            const centerX = rect.left + rect.width/2;
+            const centerY = rect.top + rect.height/2;
+            Visuals.startCharging(centerX, centerY);
+            
+            btn.querySelector('.press-inner').style.transform = "scale(1.5)";
+            
+            this.longPressTimer = setTimeout(() => {
+                this.completeWish();
+            }, 2000);
+        };
+
+        const endPress = (e) => {
+            if (!this.isCharging) return;
+            this.isCharging = false;
+            clearTimeout(this.longPressTimer);
+            AudioController.stopChargingSound();
+            Visuals.stopCharging();
+            btn.querySelector('.press-inner').style.transform = "scale(0.5)";
+        };
+
+        btn.addEventListener('touchstart', startPress);
+        btn.addEventListener('touchend', endPress);
+        btn.addEventListener('mousedown', startPress);
+        btn.addEventListener('mouseup', endPress);
+        btn.addEventListener('mouseleave', endPress);
+    },
+
+    changeScene(newSceneIndex) {
+        // Hide current
+        document.getElementById(`scene-${this.currentScene}`).classList.remove('active');
+        
+        // Update BG based on flow
+        const bg = document.getElementById('bg-overlay');
+        if (newSceneIndex === 3) bg.style.background = "var(--bg-dusk)";
+        if (newSceneIndex === 5) bg.style.background = "var(--bg-sunrise)";
+
+        // Show new
+        setTimeout(() => {
+            this.currentScene = newSceneIndex;
+            document.getElementById(`scene-${newSceneIndex}`).classList.add('active');
+        }, 500); // slight delay for exit anim
+    },
+
+    completeWish() {
+        this.isCharging = false;
+        AudioController.stopChargingSound(true); // Success sound
+        if(navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        
+        // Personalize Text
+        const map = {
+            'growth': "May you grow taller than the trees.",
+            'success': "May the stars align for your victory.",
+            'happiness': "May your heart be light and full."
+        };
+        if(this.userChoice) document.getElementById('final-message').innerText = map[this.userChoice];
+
+        // Trigger Finale
+        Visuals.stopCharging();
+        this.changeScene(5);
+        Visuals.mode = 'celebration';
+        
+        // Initial burst
+        setTimeout(() => {
+             for(let i=0; i<5; i++) setTimeout(() => Visuals.launchFirework(), i*300);
+        }, 800);
+    }
+};
+
+// Start Experience
+window.onload = () => App.init();
+
+</script>
+</body>
+</html>
